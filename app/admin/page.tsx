@@ -4,15 +4,10 @@ import { useState, useRef } from 'react'
 type Livro = { id: string; titulo: string; tipo: string; criado_em: string }
 
 export default function Admin() {
-  const [titulo, setTitulo] = useState('')
-  const [tipo, setTipo] = useState('livro')
-  const [arquivo, setArquivo] = useState<File | null>(null)
-  const [carregando, setCarregando] = useState(false)
   const [livros, setLivros] = useState<Livro[]>([])
   const [mensagem, setMensagem] = useState('')
   const [senha, setSenha] = useState('')
   const [autenticado, setAutenticado] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   function autenticar() {
     if (senha === 'pietro2024admin') {
@@ -62,16 +57,25 @@ export default function Admin() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ marginBottom: '32px' }}>
           <div style={{ fontSize: '11px', color: '#C9A84C', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>Painel de Admin</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#fff' }}>Base de Conhecimento</div>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#fff' }}>Base de Conhecimento do <span style={{ color: '#C9A84C' }}>Estrategista</span></div>
         </div>
+
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '28px', marginBottom: '24px' }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Para adicionar livros use o script no Terminal.</div>
-          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>node scripts/adicionar-livro.mjs caminho-do-pdf.pdf "Titulo" "livro"</div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Como adicionar livros</div>
+          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6' }}>Use o script no Terminal para adicionar livros.</div>
+          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '12px 16px', marginTop: '12px', fontSize: '13px', color: '#C9A84C', fontFamily: 'monospace' }}>
+            node scripts/adicionar-livro.mjs caminho.pdf "Titulo" "livro"
+          </div>
         </div>
+
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '28px' }}>
-          <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '20px' }}>Materiais ({livros.length})</div>
+          <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '20px' }}>
+            Materiais na base ({livros.length})
+          </div>
           {livros.length === 0 && (
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Nenhum material ainda.</div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>
+              Nenhum material adicionado ainda.
+            </div>
           )}
           {livros.map(l => (
             <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '0.5px solid rgba(255,255,255,0.06)' }}>
@@ -79,7 +83,9 @@ export default function Admin() {
                 <div style={{ fontSize: '14px', color: '#fff', marginBottom: '2px' }}>{l.titulo}</div>
                 <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{l.tipo}</div>
               </div>
-              <button onClick={() => deletarLivro(l.id)} style={{ background: 'rgba(255,100,100,0.1)', border: '0.5px solid rgba(255,100,100,0.3)', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', color: '#ff6b6b', cursor: 'pointer' }}>Remover</button>
+              <button onClick={() => deletarLivro(l.id)} style={{ background: 'rgba(255,100,100,0.1)', border: '0.5px solid rgba(255,100,100,0.3)', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', color: '#ff6b6b', cursor: 'pointer' }}>
+                Remover
+              </button>
             </div>
           ))}
         </div>

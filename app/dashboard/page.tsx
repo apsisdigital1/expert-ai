@@ -82,7 +82,7 @@ export default function Dashboard() {
           <div>
             <div style={{ fontSize: '10px', color: '#C9A84C', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>Exclusivo</div>
             <div style={{ fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>O Estrategista</div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>Parceiro estratégico alimentado com o conhecimento de Pietro Rodrigues. Desbloqueado após concluir todas as ferramentas.</div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>Parceiro estratégico alimentado com o conhecimento de Pietro Rodrigues.</div>
           </div>
           <div style={{ fontSize: '24px', marginLeft: '20px', color: '#C9A84C' }}>→</div>
         </div>

@@ -76,11 +76,11 @@ export default function Estrategista() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '100vh' }}>
         <div style={{ padding: '20px 28px', borderBottom: '0.5px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '10px', color: '#C9A84C', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>Desbloqueado</div>
+            <div style={{ fontSize: '10px', color: '#C9A84C', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>Exclusivo</div>
             <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>O <span style={{ color: '#C9A84C' }}>Estrategista</span></div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>Parceiro estratégico alimentado com o conhecimento de Pietro Rodrigues</div>
           </div>
-          <button onClick={() => setMensagens([{ role: 'assistant', content: 'Você chegou ao Estrategista.\n\nEste não é um assistente de execução. É um parceiro estratégico construído com o conhecimento de Pietro Rodrigues e uma base profunda de estratégia de negócios, marketing e posicionamento.\n\nAqui você não recebe respostas prontas. Você é conduzido a encontrar as melhores decisões para o seu negócio através de um diálogo estratégico real.\n\nMe conta: qual é a decisão mais importante que você precisa tomar no seu negócio agora?' }])} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Nova conversa</button>
+          <button onClick={() => setMensagens([{ role: 'assistant', content: 'Você chegou ao Estrategista.\n\nMe conta: qual é a decisão mais importante que você precisa tomar no seu negócio agora?' }])} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Nova conversa</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
