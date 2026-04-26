@@ -140,4 +140,4 @@ export default function Admin() {
 
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '28px' }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '20px' }}>Materiais na base de conhecimento ({livros.length})</div>
-          {livros.length === 0 && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Nenhum material adicionado ainda.
+          {livros.length === 0 && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Nenhum material adicionado ainda.</div>}
