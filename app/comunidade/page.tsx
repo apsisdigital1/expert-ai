@@ -1,12 +1,9 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 
-type Mensagem = {
-  role: 'user' | 'assistant'
-  content: string
-}
-
+type Mensagem = { role: 'user' | 'assistant'; content: string }
 type Modo = 'escolha' | 'chat' | 'upload'
+type Status = 'conversando' | 'analisando' | 'concluido'
 
 export default function Comunidade() {
   const [modo, setModo] = useState<Modo>('escolha')
@@ -15,19 +12,15 @@ export default function Comunidade() {
   const [carregando, setCarregando] = useState(false)
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [processando, setProcessando] = useState(false)
+  const [status, setStatus] = useState<Status>('conversando')
   const fimRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    fimRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [mensagens])
+  useEffect(() => { fimRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [mensagens])
 
   function iniciarChat() {
     setModo('chat')
-    setMensagens([{
-      role: 'assistant',
-      content: 'Vamos construir sua audiência e comunidade com precisão cirúrgica.\n\nPosicionamento sem audiência definida é monólogo. Você pode ter a identidade mais clara do mercado mas se não sabe exatamente para quem está falando tudo vai para o vazio.\n\nComeçamos com uma pergunta direta: você sabe exatamente para quem faz conteúdo? Não de forma vaga. Me descreve essa pessoa como se estivesse falando de alguém real que você conhece.'
-    }])
+    setMensagens([{ role: 'assistant', content: 'Vamos construir sua audiência e comunidade com precisão cirúrgica.\n\nPosicionamento sem audiência definida é monólogo. Você pode ter a identidade mais clara do mercado mas se não sabe exatamente para quem está falando tudo vai para o vazio.\n\nComeçamos com uma pergunta direta: você sabe exatamente para quem faz conteúdo? Me descreve essa pessoa como se estivesse falando de alguém real que você conhece.' }])
   }
 
   async function enviar() {
@@ -38,18 +31,32 @@ export default function Comunidade() {
     setInput('')
     setCarregando(true)
     try {
-      const res = await fetch('/api/comunidade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mensagens: novaLista })
-      })
+      const res = await fetch('/api/comunidade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagens: novaLista }) })
       const data = await res.json()
       setMensagens(prev => [...prev, { role: 'assistant', content: data.resposta }])
-    } catch {
-      setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao conectar. Tente novamente.' }])
-    } finally {
-      setCarregando(false)
-    }
+    } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao conectar.' }]) }
+    finally { setCarregando(false) }
+  }
+
+  async function concluirFerramenta() {
+    setStatus('analisando')
+    setCarregando(true)
+    const mensagemAnalise: Mensagem = { role: 'user', content: 'Quero concluir essa etapa. Faz uma análise completa de tudo que foi entregue até agora sobre audiência e comunidade. Lista o que está completo e o que ainda está faltando para o ICP, Persona e Canvas da Comunidade estarem 100% concluídos.' }
+    const novaLista = [...mensagens, mensagemAnalise]
+    setMensagens(novaLista)
+    try {
+      const res = await fetch('/api/comunidade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagens: novaLista }) })
+      const data = await res.json()
+      setMensagens(prev => [...prev, { role: 'assistant', content: data.resposta }])
+    } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao analisar.' }]) }
+    finally { setCarregando(false) }
+  }
+
+  async function confirmarConclusao() {
+    setStatus('concluido')
+    const conteudo = mensagens.map(m => `${m.role === 'user' ? 'ALUNO' : 'IA'}: ${m.content}`).join('\n\n')
+    await fetch('/api/salvar-output', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ferramenta: 'comunidade', conteudo }) })
+    setMensagens(prev => [...prev, { role: 'assistant', content: 'Audiência e Comunidade concluídos e salvos. O Estrategista já tem acesso a tudo que você construiu aqui.\n\nPróximo passo: Ferramenta 04 — Narrativa Visceral.' }])
   }
 
   async function processarPDF() {
@@ -59,23 +66,13 @@ export default function Comunidade() {
     const reader = new FileReader()
     reader.onload = async (e) => {
       const base64 = (e.target?.result as string).split(',')[1]
-      setMensagens([{
-        role: 'assistant',
-        content: 'Recebi seu documento. Vou analisar o que você já tem sobre audiência e comunidade e identificar o que precisa ser aprofundado.'
-      }])
+      setMensagens([{ role: 'assistant', content: 'Recebi seu documento. Vou analisar o que você já tem sobre audiência e comunidade.' }])
       try {
-        const res = await fetch('/api/comunidade-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base64 })
-        })
+        const res = await fetch('/api/comunidade-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64 }) })
         const data = await res.json()
         setMensagens(prev => [...prev, { role: 'assistant', content: data.resposta }])
-      } catch {
-        setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao processar o PDF. Tente novamente.' }])
-      } finally {
-        setProcessando(false)
-      }
+      } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao processar.' }]) }
+      finally { setProcessando(false) }
     }
     reader.readAsDataURL(arquivo)
   }
@@ -107,69 +104,59 @@ export default function Comunidade() {
     </div>
   )
 
-  if (modo === 'escolha') {
-    return (
-      <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
-        {sidebar}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-          <div style={{ maxWidth: '600px', width: '100%' }}>
-            <div style={{ marginBottom: '40px' }}>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Ferramenta 03</div>
-              <div style={{ fontSize: '26px', fontWeight: '700', color: '#fff', marginBottom: '12px' }}>Audiência e <span style={{ color: '#C9A84C' }}>Comunidade</span></div>
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6' }}>Precisão cirúrgica sobre para quem você fala e como construir uma comunidade que acredita no que você defende. Entrega o ICP, Persona e Canvas da Comunidade completos.</div>
+  if (modo === 'escolha') return (
+    <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
+      {sidebar}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+        <div style={{ maxWidth: '600px', width: '100%' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Ferramenta 03</div>
+            <div style={{ fontSize: '26px', fontWeight: '700', color: '#fff', marginBottom: '12px' }}>Audiência e <span style={{ color: '#C9A84C' }}>Comunidade</span></div>
+            <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', lineHeight: '1.6' }}>Precisão cirúrgica sobre para quem você fala e como construir uma comunidade que acredita no que você defende.</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div onClick={iniciarChat} style={{ background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '28px', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#C9A84C')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}>
+              <div style={{ fontSize: '28px', marginBottom: '16px' }}>💬</div>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Construir do zero</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>A IA conduz você pela definição do ICP, Persona, universo de marca e identidade da tribo.</div>
+              <div style={{ marginTop: '20px', fontSize: '12px', color: '#C9A84C' }}>Iniciar →</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div onClick={iniciarChat} style={{ background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '28px', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = '#C9A84C')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}>
-                <div style={{ fontSize: '28px', marginBottom: '16px' }}>💬</div>
-                <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Construir do zero</div>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>A IA conduz você pela definição do ICP, Persona, universo de marca e identidade da tribo.</div>
-                <div style={{ marginTop: '20px', fontSize: '12px', color: '#C9A84C' }}>Iniciar →</div>
-              </div>
-              <div onClick={() => setModo('upload')} style={{ background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '28px', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = '#C9A84C')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}>
-                <div style={{ fontSize: '28px', marginBottom: '16px' }}>📄</div>
-                <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Já tenho material</div>
-                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>Suba o DOC 4 de Audiência ou qualquer material sobre seu público e a IA completa o que estiver faltando.</div>
-                <div style={{ marginTop: '20px', fontSize: '12px', color: '#C9A84C' }}>Enviar documento →</div>
-              </div>
+            <div onClick={() => setModo('upload')} style={{ background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '28px', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#C9A84C')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}>
+              <div style={{ fontSize: '28px', marginBottom: '16px' }}>📄</div>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Já tenho material</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>Suba o DOC 4 de Audiência e a IA completa o que estiver faltando.</div>
+              <div style={{ marginTop: '20px', fontSize: '12px', color: '#C9A84C' }}>Enviar documento →</div>
             </div>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (modo === 'upload') {
-    return (
-      <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
-        {sidebar}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-          <div style={{ maxWidth: '500px', width: '100%' }}>
-            <div style={{ marginBottom: '32px' }}>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Ferramenta 03</div>
-              <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>Envie seu <span style={{ color: '#C9A84C' }}>documento</span></div>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>Pode ser o DOC 4 de Audiência, ICP, Persona ou qualquer material sobre sua comunidade.</div>
-            </div>
-            <div onClick={() => fileRef.current?.click()} style={{ background: 'rgba(255,255,255,0.02)', border: arquivo ? '0.5px solid #C9A84C' : '0.5px dashed rgba(255,255,255,0.15)', borderRadius: '12px', padding: '40px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px' }}>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📎</div>
-              <div style={{ fontSize: '14px', color: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.4)' }}>{arquivo ? arquivo.name : 'Clique para selecionar um PDF'}</div>
-              {!arquivo && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>Somente arquivos PDF</div>}
-              <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setArquivo(e.target.files?.[0] || null)} />
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setModo('escolha')} style={{ flex: 1, background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', fontSize: '13px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Voltar</button>
-              <button onClick={processarPDF} disabled={!arquivo || processando} style={{ flex: 2, background: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '13px', fontWeight: '600', color: arquivo ? '#07090F' : 'rgba(255,255,255,0.2)', cursor: arquivo ? 'pointer' : 'not-allowed' }}>
-                {processando ? 'Analisando...' : 'Analisar documento'}
-              </button>
-            </div>
+  if (modo === 'upload') return (
+    <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
+      {sidebar}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+        <div style={{ maxWidth: '500px', width: '100%' }}>
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Ferramenta 03</div>
+            <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>Envie seu <span style={{ color: '#C9A84C' }}>documento</span></div>
+          </div>
+          <div onClick={() => fileRef.current?.click()} style={{ background: 'rgba(255,255,255,0.02)', border: arquivo ? '0.5px solid #C9A84C' : '0.5px dashed rgba(255,255,255,0.15)', borderRadius: '12px', padding: '40px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>📎</div>
+            <div style={{ fontSize: '14px', color: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.4)' }}>{arquivo ? arquivo.name : 'Clique para selecionar um PDF'}</div>
+            <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setArquivo(e.target.files?.[0] || null)} />
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setModo('escolha')} style={{ flex: 1, background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', fontSize: '13px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Voltar</button>
+            <button onClick={processarPDF} disabled={!arquivo || processando} style={{ flex: 2, background: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '13px', fontWeight: '600', color: arquivo ? '#07090F' : 'rgba(255,255,255,0.2)', cursor: arquivo ? 'pointer' : 'not-allowed' }}>
+              {processando ? 'Analisando...' : 'Analisar documento'}
+            </button>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: '#07090F', display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
@@ -180,7 +167,12 @@ export default function Comunidade() {
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>Ferramenta 03</div>
             <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Audiência e <span style={{ color: '#C9A84C' }}>Comunidade</span></div>
           </div>
-          <button onClick={() => { setModo('escolha'); setMensagens([]) }} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Reiniciar</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {status === 'conversando' && <button onClick={concluirFerramenta} style={{ background: 'rgba(201,168,76,0.1)', border: '0.5px solid rgba(201,168,76,0.3)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: '#C9A84C', cursor: 'pointer' }}>Concluir ferramenta</button>}
+            {status === 'analisando' && <button onClick={confirmarConclusao} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', color: '#07090F', cursor: 'pointer' }}>Confirmar conclusão</button>}
+            {status === 'concluido' && <div style={{ background: 'rgba(76,175,80,0.1)', border: '0.5px solid rgba(76,175,80,0.3)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: '#4CAF50' }}>✓ Concluído</div>}
+            <button onClick={() => { setModo('escolha'); setMensagens([]); setStatus('conversando') }} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Reiniciar</button>
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {mensagens.map((m, i) => (
@@ -203,8 +195,8 @@ export default function Comunidade() {
         </div>
         <div style={{ padding: '16px 28px', borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && enviar()} placeholder="Responda aqui..." style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'system-ui, sans-serif' }} />
-            <button onClick={enviar} disabled={carregando} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: '600', color: '#07090F', cursor: 'pointer' }}>Enviar</button>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && enviar()} placeholder="Responda aqui..." disabled={status === 'concluido'} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'system-ui, sans-serif', opacity: status === 'concluido' ? 0.5 : 1 }} />
+            <button onClick={enviar} disabled={carregando || status === 'concluido'} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: '600', color: '#07090F', cursor: 'pointer', opacity: status === 'concluido' ? 0.5 : 1 }}>Enviar</button>
           </div>
         </div>
       </div>

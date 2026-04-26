@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 
 type Mensagem = { role: 'user' | 'assistant'; content: string }
 type Modo = 'escolha' | 'chat' | 'upload'
+type Status = 'conversando' | 'analisando' | 'concluido'
 
 export default function Produtos() {
   const [modo, setModo] = useState<Modo>('escolha')
@@ -11,6 +12,7 @@ export default function Produtos() {
   const [carregando, setCarregando] = useState(false)
   const [arquivo, setArquivo] = useState<File | null>(null)
   const [processando, setProcessando] = useState(false)
+  const [status, setStatus] = useState<Status>('conversando')
   const fimRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -18,7 +20,7 @@ export default function Produtos() {
 
   function iniciarChat() {
     setModo('chat')
-    setMensagens([{ role: 'assistant', content: 'Vamos construir seu ecossistema de produtos.\n\nA maioria dos experts tem conhecimento para criar dez produtos mas vende um de forma confusa e sem clareza sobre para onde o cliente vai depois. O resultado é LTV baixo e dependência de aquisição constante.\n\nAntes de qualquer coisa preciso entender o que você tem hoje. Me conta: quais produtos ou serviços você vende atualmente e qual deles gera mais receita?' }])
+    setMensagens([{ role: 'assistant', content: 'Vamos construir seu ecossistema de produtos.\n\nA maioria dos experts tem conhecimento para criar dez produtos mas vende um de forma confusa e sem clareza sobre para onde o cliente vai depois.\n\nAntes de qualquer coisa preciso entender o que você tem hoje. Me conta: quais produtos ou serviços você vende atualmente e qual deles gera mais receita?' }])
   }
 
   async function enviar() {
@@ -32,8 +34,29 @@ export default function Produtos() {
       const res = await fetch('/api/produtos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagens: novaLista }) })
       const data = await res.json()
       setMensagens(prev => [...prev, { role: 'assistant', content: data.resposta }])
-    } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao conectar. Tente novamente.' }]) }
+    } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao conectar.' }]) }
     finally { setCarregando(false) }
+  }
+
+  async function concluirFerramenta() {
+    setStatus('analisando')
+    setCarregando(true)
+    const mensagemAnalise: Mensagem = { role: 'user', content: 'Quero concluir essa etapa. Faz uma análise completa de tudo que foi entregue até agora sobre ecossistema de produtos, esteira e jornada de ascensão. Lista o que está completo e o que ainda está faltando.' }
+    const novaLista = [...mensagens, mensagemAnalise]
+    setMensagens(novaLista)
+    try {
+      const res = await fetch('/api/produtos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagens: novaLista }) })
+      const data = await res.json()
+      setMensagens(prev => [...prev, { role: 'assistant', content: data.resposta }])
+    } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao analisar.' }]) }
+    finally { setCarregando(false) }
+  }
+
+  async function confirmarConclusao() {
+    setStatus('concluido')
+    const conteudo = mensagens.map(m => `${m.role === 'user' ? 'ALUNO' : 'IA'}: ${m.content}`).join('\n\n')
+    await fetch('/api/salvar-output', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ferramenta: 'produtos', conteudo }) })
+    setMensagens(prev => [...prev, { role: 'assistant', content: 'Ecossistema de Produtos concluído e salvo. Você completou todas as ferramentas.\n\nO Estrategista foi desbloqueado e já tem acesso a tudo que você construiu. Acesse agora em /estrategista.' }])
   }
 
   async function processarPDF() {
@@ -43,12 +66,12 @@ export default function Produtos() {
     const reader = new FileReader()
     reader.onload = async (e) => {
       const base64 = (e.target?.result as string).split(',')[1]
-      setMensagens([{ role: 'assistant', content: 'Recebi seu documento. Vou analisar sua esteira atual e construir o ecossistema de produtos completo.' }])
+      setMensagens([{ role: 'assistant', content: 'Recebi seu documento. Vou analisar sua esteira atual e construir o ecossistema completo.' }])
       try {
         const res = await fetch('/api/produtos-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base64 }) })
         const data = await res.json()
         setMensagens(prev => [...prev, { role: 'assistant', content: data.resposta }])
-      } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao processar o PDF.' }]) }
+      } catch { setMensagens(prev => [...prev, { role: 'assistant', content: 'Erro ao processar.' }]) }
       finally { setProcessando(false) }
     }
     reader.readAsDataURL(arquivo)
@@ -95,13 +118,13 @@ export default function Produtos() {
             <div onClick={iniciarChat} style={{ background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '28px', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#C9A84C')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}>
               <div style={{ fontSize: '28px', marginBottom: '16px' }}>💬</div>
               <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Construir do zero</div>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>A IA constrói seu produto bestseller, define a esteira completa e mapeia a jornada de ascensão do cliente.</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>A IA constrói seu produto bestseller, define a esteira completa e mapeia a jornada de ascensão.</div>
               <div style={{ marginTop: '20px', fontSize: '12px', color: '#C9A84C' }}>Iniciar →</div>
             </div>
             <div onClick={() => setModo('upload')} style={{ background: 'rgba(255,255,255,0.02)', border: '0.5px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '28px', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.borderColor = '#C9A84C')} onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}>
               <div style={{ fontSize: '28px', marginBottom: '16px' }}>📄</div>
               <div style={{ fontSize: '15px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Já tenho material</div>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>Suba sua esteira atual e a IA analisa, identifica gaps e otimiza o ecossistema completo.</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>Suba sua esteira atual e a IA analisa e otimiza o ecossistema completo.</div>
               <div style={{ marginTop: '20px', fontSize: '12px', color: '#C9A84C' }}>Enviar documento →</div>
             </div>
           </div>
@@ -118,12 +141,10 @@ export default function Produtos() {
           <div style={{ marginBottom: '32px' }}>
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Ferramenta 06</div>
             <div style={{ fontSize: '22px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>Envie seu <span style={{ color: '#C9A84C' }}>documento</span></div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: '1.5' }}>Pode ser sua esteira atual, descrição dos produtos, precificação ou qualquer material sobre seu ecossistema de produtos.</div>
           </div>
           <div onClick={() => fileRef.current?.click()} style={{ background: 'rgba(255,255,255,0.02)', border: arquivo ? '0.5px solid #C9A84C' : '0.5px dashed rgba(255,255,255,0.15)', borderRadius: '12px', padding: '40px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>📎</div>
             <div style={{ fontSize: '14px', color: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.4)' }}>{arquivo ? arquivo.name : 'Clique para selecionar um PDF'}</div>
-            {!arquivo && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>Somente arquivos PDF</div>}
             <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setArquivo(e.target.files?.[0] || null)} />
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -146,7 +167,12 @@ export default function Produtos() {
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>Ferramenta 06</div>
             <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>Ecossistema de <span style={{ color: '#C9A84C' }}>Produtos</span></div>
           </div>
-          <button onClick={() => { setModo('escolha'); setMensagens([]) }} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Reiniciar</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {status === 'conversando' && <button onClick={concluirFerramenta} style={{ background: 'rgba(201,168,76,0.1)', border: '0.5px solid rgba(201,168,76,0.3)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: '#C9A84C', cursor: 'pointer' }}>Concluir ferramenta</button>}
+            {status === 'analisando' && <button onClick={confirmarConclusao} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', color: '#07090F', cursor: 'pointer' }}>Confirmar conclusão</button>}
+            {status === 'concluido' && <div style={{ background: 'rgba(76,175,80,0.1)', border: '0.5px solid rgba(76,175,80,0.3)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: '#4CAF50' }}>✓ Concluído</div>}
+            <button onClick={() => { setModo('escolha'); setMensagens([]); setStatus('conversando') }} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>Reiniciar</button>
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {mensagens.map((m, i) => (
@@ -169,8 +195,8 @@ export default function Produtos() {
         </div>
         <div style={{ padding: '16px 28px', borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && enviar()} placeholder="Responda aqui..." style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'system-ui, sans-serif' }} />
-            <button onClick={enviar} disabled={carregando} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: '600', color: '#07090F', cursor: 'pointer' }}>Enviar</button>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && enviar()} placeholder="Responda aqui..." disabled={status === 'concluido'} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', color: '#fff', outline: 'none', fontFamily: 'system-ui, sans-serif', opacity: status === 'concluido' ? 0.5 : 1 }} />
+            <button onClick={enviar} disabled={carregando || status === 'concluido'} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '14px', fontWeight: '600', color: '#07090F', cursor: 'pointer', opacity: status === 'concluido' ? 0.5 : 1 }}>Enviar</button>
           </div>
         </div>
       </div>
