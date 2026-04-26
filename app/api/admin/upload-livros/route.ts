@@ -8,24 +8,28 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 )
 
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
-  const { titulo, tipo, base64 } = await req.json()
+  try {
+    const { titulo, tipo, base64 } = await req.json()
 
-  const resposta = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-        { type: 'text', text: 'Extraia os conceitos, frameworks, ideias e insights mais importantes deste material em português brasileiro. Organize de forma estruturada cobrindo os principais ensinamentos, metodologias e aplicações práticas. Seja completo e profundo.' }
-      ]
-    }]
-  })
+    const resposta = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: 'Extraia os 10 conceitos e insights mais importantes deste material em português brasileiro de forma concisa e direta.' }
+        ]
+      }]
+    })
 
-  const conteudo = resposta.content[0].type === 'text' ? resposta.content[0].text : ''
-
-  await supabase.from('knowledge_base').insert({ titulo, tipo, conteudo })
-
-  return NextResponse.json({ sucesso: true })
+    const conteudo = resposta.content[0].type === 'text' ? resposta.content[0].text : ''
+    await supabase.from('knowledge_base').insert({ titulo, tipo, conteudo })
+    return NextResponse.json({ sucesso: true })
+  } catch (error) {
+    return NextResponse.json({ sucesso: false, erro: 'Erro ao processar' }, { status: 500 })
+  }
 }

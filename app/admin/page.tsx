@@ -12,6 +12,7 @@ export default function Admin() {
   const [mensagem, setMensagem] = useState('')
   const [senha, setSenha] = useState('')
   const [autenticado, setAutenticado] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function autenticar() {
@@ -29,26 +30,37 @@ export default function Admin() {
     setLivros(data.livros || [])
   }
 
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file && file.type === 'application/pdf') setArquivo(file)
+  }
+
   async function uploadLivro() {
     if (!arquivo || !titulo) { setMensagem('Preencha o título e selecione um arquivo.'); return }
     setCarregando(true)
-    setMensagem('')
+    setMensagem('Processando o PDF. Aguarde...')
     const reader = new FileReader()
     reader.onload = async (e) => {
       const base64 = (e.target?.result as string).split(',')[1]
-      const res = await fetch('/api/admin/upload-livro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulo, tipo, base64 })
-      })
-      const data = await res.json()
-      if (data.sucesso) {
-        setMensagem('Livro adicionado com sucesso.')
-        setTitulo('')
-        setArquivo(null)
-        carregarLivros()
-      } else {
-        setMensagem('Erro ao adicionar livro.')
+      try {
+        const res = await fetch('/api/admin/upload-livro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo, tipo, base64 })
+        })
+        const data = await res.json()
+        if (data.sucesso) {
+          setMensagem('Livro adicionado com sucesso.')
+          setTitulo('')
+          setArquivo(null)
+          carregarLivros()
+        } else {
+          setMensagem('Erro ao adicionar livro. Tente novamente.')
+        }
+      } catch {
+        setMensagem('Erro ao conectar. Tente novamente.')
       }
       setCarregando(false)
     }
@@ -93,13 +105,13 @@ export default function Admin() {
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '20px' }}>Adicionar novo material</div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>TÍTULO DO LIVRO OU MATERIAL</label>
+            <label style={{ display: 'block', fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>TÍTULO</label>
             <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Positioning — Al Ries e Jack Trout" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>TIPO</label>
-            <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#fff', outline: 'none', boxSizing: 'border-box' }}>
+            <select value={tipo} onChange={e => setTipo(e.target.value)} style={{ width: '100%', background: '#1a1a2e', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 14px', fontSize: '14px', color: '#fff', outline: 'none', boxSizing: 'border-box' }}>
               <option value="livro">Livro</option>
               <option value="artigo">Artigo</option>
               <option value="metodologia">Metodologia</option>
@@ -107,33 +119,25 @@ export default function Admin() {
             </select>
           </div>
 
-          <div onClick={() => fileRef.current?.click()} style={{ background: 'rgba(255,255,255,0.02)', border: arquivo ? '0.5px solid #C9A84C' : '0.5px dashed rgba(255,255,255,0.15)', borderRadius: '8px', padding: '28px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px' }}>
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📄</div>
-            <div style={{ fontSize: '13px', color: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.4)' }}>{arquivo ? arquivo.name : 'Clique para selecionar o PDF'}</div>
+          <div
+            onClick={() => fileRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            style={{ background: dragOver ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.02)', border: arquivo ? '0.5px solid #C9A84C' : dragOver ? '0.5px solid #C9A84C' : '0.5px dashed rgba(255,255,255,0.15)', borderRadius: '8px', padding: '36px', textAlign: 'center', cursor: 'pointer', marginBottom: '16px', transition: 'all 0.2s' }}>
+            <div style={{ fontSize: '28px', marginBottom: '8px' }}>📄</div>
+            <div style={{ fontSize: '14px', color: arquivo ? '#C9A84C' : 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>{arquivo ? arquivo.name : 'Arraste o PDF aqui ou clique para selecionar'}</div>
+            {!arquivo && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)' }}>Somente arquivos PDF</div>}
             <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => setArquivo(e.target.files?.[0] || null)} />
           </div>
 
-          {mensagem && <div style={{ fontSize: '13px', color: mensagem.includes('sucesso') ? '#4CAF50' : '#ff6b6b', marginBottom: '16px' }}>{mensagem}</div>}
+          {mensagem && <div style={{ fontSize: '13px', color: mensagem.includes('sucesso') ? '#4CAF50' : mensagem.includes('Processando') ? '#C9A84C' : '#ff6b6b', marginBottom: '16px' }}>{mensagem}</div>}
 
-          <button onClick={uploadLivro} disabled={carregando} style={{ background: '#C9A84C', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '14px', fontWeight: '600', color: '#07090F', cursor: 'pointer' }}>
-            {carregando ? 'Processando...' : 'Adicionar ao Estrategista'}
+          <button onClick={uploadLivro} disabled={carregando} style={{ background: carregando ? 'rgba(201,168,76,0.4)' : '#C9A84C', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '14px', fontWeight: '600', color: '#07090F', cursor: carregando ? 'not-allowed' : 'pointer' }}>
+            {carregando ? 'Processando PDF...' : 'Adicionar ao Estrategista'}
           </button>
         </div>
 
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '28px' }}>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '20px' }}>Materiais na base de conhecimento ({livros.length})</div>
-          {livros.length === 0 && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Nenhum material adicionado ainda.</div>}
-          {livros.map(l => (
-            <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '0.5px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <div style={{ fontSize: '14px', color: '#fff', marginBottom: '2px' }}>{l.titulo}</div>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{l.tipo}</div>
-              </div>
-              <button onClick={() => deletarLivro(l.id)} style={{ background: 'rgba(255,100,100,0.1)', border: '0.5px solid rgba(255,100,100,0.3)', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', color: '#ff6b6b', cursor: 'pointer' }}>Remover</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+          {livros.length === 0 && <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>Nenhum material adicionado ainda.
